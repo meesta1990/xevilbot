@@ -61,7 +61,7 @@ bot.on('message', (msg) => {
   const messageText = msg.text;
 
   // Invia il menu di contesto se il messaggio è una stringa valida
-  if ("/start xevilbot") {
+  if (messageText === "/start xevilbot") {
     createContextMenu(chatId, msg.message_id);
   }
 });
