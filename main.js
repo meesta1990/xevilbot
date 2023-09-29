@@ -1,116 +1,108 @@
-import { Telegraf, Markup } from 'telegraf'
-import express from 'express';
+import TelegramBot from 'node-telegram-bot-api';
+import fs from 'fs'
 
-const expressApp = express();
-const port = process.env.PORT || 3000
-expressApp.get('/', (req, res) => {
-    res.send('Hello World!')
-})
-expressApp.listen(port, () => {
-    console.log(`Listening on port ${port}`)
-})
+// Token del tuo bot (inseriscilo qui)
+const TOKEN = '1812772248:AAFws2Ej6_bDKRbxguR0pQuCSpbkU2NVoFY';
 
-const TELEGRAM_BOT_TOKEN = '1812772248:AAFws2Ej6_bDKRbxguR0pQuCSpbkU2NVoFY';
-const bot = new Telegraf(TELEGRAM_BOT_TOKEN)
 
-const line1 = ['aldo aldo', 'AmericaH', 'anitra', 'audio Sole 1', 'audio Sole 2'];
-const line2 = ['back2back', 'fai vomitare', 'fate vomitare', 'Fetta di carne'];
-const line3 = ['Futili tentativi','he bought dump it', 'infimad', 'Io sono stato'];
-const line4 = ['lavoro da casa','LO SCHIFO', 'meesta versione definitiva dello schifo'];
-const line5 = ['mooo','motorino', 'nooo', 'Novi', 'pa pa pa pa'];
-const line6 = ['per piacere max','Pranzo xevil 2021', 'ragionamenti complessi', 'Rauuul'];
-const line7 = ['schifoso cane maledetto','se tu avessi fatto sirus'];
-const line8 = ['secondo me è una stronzata','tempo nefasto', 'ti sento agitato'];
-const line9 = ['uno dei peggiori giocatori','Vaffanculo', 'vincerei sempre fate vomitare', 'SBORRO'];
-const line10 = ['video filosofia', 'video muto 1', 'video muto 2'];
-const line11 = ['video non voglio mentirti michele', 'video ubriachezza', 'video vinile'];
-const line12 = ['video vita avara', 'video wow'];
 
-const whitelist = [-1001204191448];
+// Inizializza il bot
+const bot = new TelegramBot(TOKEN, { polling: true });
 
-bot.command('/start', (ctx) =>{
-    ctx.reply('XevilBot Started! Seleziona dalla chat il vocale del bot Priamo', Markup
-		.keyboard([line1, line2, line3, line4, line5, line6, line7, line8, line9, line10, line11, line12])
-		.oneTime()
-		.resize()
-	)
+// Directory contenente i file audio
+const audioDir = './assets/media/audio/';
+const videoDir = './assets/media/video/';
 
+// Funzione per creare il menu di contesto con pulsanti inline
+function createContextMenu(chatId, messageId) {
+  const options = {
+    reply_markup: {
+      inline_keyboard: [
+        [
+          { text: 'Riproduci Audio', callback_data: 'audio' },
+          { text: 'Guarda Video', callback_data: 'video' },
+        ],
+      ],
+    },
+  };
+
+  bot.sendMessage(chatId, 'Scegli un\'azione:', options);
+}
+
+// Funzione per inviare la lista degli audio disponibili con pulsanti inline
+function sendFileList(chatId, extension) {
+  const isAudio = extension === '.ogg';
+  const audioFiles = fs.readdirSync(isAudio ? audioDir : videoDir).filter((file) => file.endsWith(extension));
+
+  if (audioFiles.length === 0) {
+    bot.sendMessage(chatId, `Nessun file ${extension} disponibile`);
+  } else {
+    const type = isAudio ? 'audio' : 'video';
+    const keyboard = audioFiles.map((fileName) => [
+      {
+        text: fileName,
+        callback_data: `${type}_${fileName}`,
+      },
+    ]);
+
+    const options = {
+      reply_markup: {
+        inline_keyboard: keyboard,
+      },
+    };
+
+    bot.sendMessage(chatId, `Seleziona un file ${type}`, options);
+  }
+}
+
+// Gestisci i messaggi ricevuti
+bot.on('message', (msg) => {
+  const chatId = msg.chat.id;
+  const messageText = msg.text;
+
+  // Invia il menu di contesto se il messaggio è una stringa valida
+  if ("/start xevilbot") {
+    createContextMenu(chatId, msg.message_id);
+  }
 });
 
-for(let i=0;i<line1.length;i++){
-    bot.hears(line1[i], (ctx) => {
-       ctx.replyWithAudio({ source: 'assets/media/audio/' + line1[i] +'.ogg' })
-    });
-}
-for(let i=0;i<line2.length;i++){
-    bot.hears(line2[i], (ctx) => {
-        ctx.replyWithAudio({ source: 'assets/media/audio/' + line2[i] +'.ogg' })
-    });
-}
-for(let i=0;i<line3.length;i++){
-    bot.hears(line3[i], (ctx) => {
-        ctx.replyWithAudio({ source: 'assets/media/audio/' + line3[i] +'.ogg' })
-    });
-}
+// Gestisci le callback query (azioni dal menu di contesto)
+bot.on('callback_query', (query) => {
+  const chatId = query.message.chat.id;
+  const messageId = query.message.message_id;
+  const callbackData = query.data;
 
-for(let i=0;i<line4.length;i++){
-    bot.hears(line4[i], (ctx) => {
-        ctx.replyWithAudio({ source: 'assets/media/audio/' + line4[i] +'.ogg' })
-    });
-}
-for(let i=0;i<line5.length;i++){
-    bot.hears(line5[i], (ctx) => {
-		ctx.replyWithAudio({ source: 'assets/media/audio/' + line5[i] +'.ogg' })
-    });
-}
-for(let i=0;i<line6.length;i++){
-    bot.hears(line6[i], (ctx) => {
-        ctx.replyWithAudio({ source: 'assets/media/audio/' + line6[i] +'.ogg' })
-    });
-}
+  if (callbackData === 'audio') {
+    // Se è stato premuto il pulsante "Audio", invia la lista degli audio disponibili
+    sendFileList(chatId, '.ogg');
+  } else if (callbackData === 'video') {
+    // Se è stato premuto il pulsante "Video", invia la lista degli audio disponibili
+    sendFileList(chatId, '.mp4')
+  } else if (callbackData.startsWith('audio_') || callbackData.startsWith('video_')) {
+    const type = callbackData.substring(0, 5)
+    const isAudio = type === 'audio';
+    // Se è stata selezionata una traccia , estrai il nome del file
+    const fileName = callbackData.replace(type + '_', '');
 
-for(let i=0;i<line7.length;i++){
-    bot.hears(line7[i], (ctx) => {
-        ctx.replyWithAudio({ source: 'assets/media/audio/' + line7[i] +'.ogg' })
-    });
-}
-for(let i=0;i<line8.length;i++){
-    bot.hears(line8[i], (ctx) => {
-        ctx.replyWithAudio({ source: 'assets/media/audio/' + line8[i] +'.ogg' })
-    });
-}
-for(let i=0;i<line9.length;i++){
-    bot.hears(line9[i], (ctx) => {
-        ctx.replyWithAudio({ source: 'assets/media/audio/' + line9[i] +'.ogg' })
-    });
-}
-for(let i=0;i<line10.length;i++){
-    bot.hears(line10[i], (ctx) => {
-        ctx.replyWithAudio({ source: 'assets/media/audio/' + line10[i] +'.ogg' })
-    });
-}
+    // Costruisci il percorso completo del file
+    const filePath = `${isAudio ? audioDir : videoDir}${fileName}`;
 
-//video
-for(let i=0;i<line10.length;i++){
-    bot.hears(line10[i], (ctx) => {
-       const videoName = line10[i].toLowerCase().replace('video ','');
-            ctx.replyWithVideoNote({ source: 'assets/media/video/' + videoName +'.mp4' })
-    });
-}
-for(let i=0;i<line11.length;i++){
-    bot.hears(line11[i], (ctx) => {
-        const videoName = line11[i].toLowerCase().replace('video ','');
-            ctx.replyWithVideoNote({ source: 'assets/media/video/' + videoName +'.mp4' })
-    });
-}
-for(let i=0;i<line12.length;i++){
-    bot.hears(line12[i], (ctx) => {
-        const videoName = line12[i].toLowerCase().replace('video ','');
-            ctx.replyWithVideoNote({ source: 'assets/media/video/' + videoName +'.mp4' })
-    });
-}
+    // Invia l'audio o il video
+    if (fs.existsSync(filePath)) {
+      if (isAudio) bot.sendAudio(chatId, filePath);
+      else bot.sendVideo(chatId, filePath);
+    } else {
+      bot.sendMessage(chatId, 'Il file richiesto non esiste.');
+    }
+  }
 
-bot.catch((e)=>{
-console.log(e);
-})
-bot.startPolling();
+  // Rimuovi il menu di contesto dopo l'azione
+  bot.deleteMessage(chatId, messageId);
+});
+
+// Avvia il bot
+bot.on('polling_error', (error) => {
+  console.error(error);
+});
+
+console.log('Bot avviato');
