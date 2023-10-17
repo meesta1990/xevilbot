@@ -4,10 +4,15 @@ import fs from 'fs'
 // Token del tuo bot (inseriscilo qui)
 const TOKEN = '1812772248:AAFws2Ej6_bDKRbxguR0pQuCSpbkU2NVoFY';
 
-
+const options = {
+  webHook: {
+    port: 3000,
+    polling: true
+  }
+};
 
 // Inizializza il bot
-const bot = new TelegramBot(TOKEN, { polling: true });
+const bot = new TelegramBot(TOKEN, options);
 
 // Directory contenente i file audio
 const audioDir = './assets/media/audio/';
